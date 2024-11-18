@@ -36,12 +36,12 @@ contract VaultOperations is AddressBook {
         ------------------- PROTOCOL EVENTS -------------------
     */
 
-    event VaultCreated(address indexed user, uint256 collatAmount, uint256 debtAmount);
-    event VaultClosed(address indexed user, uint256 collatAmount, uint256 debtAmount);
-    event VaultAdjusted(address indexed user, uint256 addCollateral, uint256 withdrawCollateral, uint256 addDebt, uint256 repaidDebt);
-    event VaultLiquidated(address indexed vaultOwner, address vaultCollateral, address indexed liquidator);
-    event VaultTransfered(address indexed vaultCollateral, address indexed vaultOwner, address indexed recipient);
-    event VaultRedeemed(address indexed vaultOwner, address vaultCollateral, uint256 amount, uint256 vaultARS);
+    event VaultCreated(address indexed vaultOwner, address indexed vaultCollateral, uint256 collatAmount, uint256 debtAmount);
+    event VaultClosed(address indexed vaultOwner, address indexed vaultCollateral, uint256 collatAmount, uint256 debtAmount);
+    event VaultAdjusted(address indexed vaultOwner, address indexed vaultCollateral, uint256 addCollateral, uint256 withdrawCollateral, uint256 addDebt, uint256 repaidDebt);
+    event VaultLiquidated(address indexed vaultOwner, address indexed vaultCollateral, address indexed liquidator);
+    event VaultTransfered(address indexed oldOwner, address indexed vaultCollateral, address indexed newOwner);
+    event VaultRedeemed(address indexed vaultOwner, address vaultCollateral, address redeemer, uint256 amount, uint256 vaultARS);
     event VaultInterestMinted(uint256 amount);
 
     /*
@@ -75,7 +75,7 @@ contract VaultOperations is AddressBook {
         IERC20(vaultCollateral).transferFrom(msg.sender, address(this), collatAmount);
         IERC20(debtToken).mint(msg.sender, debtAmount);
 
-        emit VaultCreated(msg.sender, collatAmount, debtAmount);
+        emit VaultCreated(msg.sender, vaultCollateral, collatAmount, debtAmount);
     }
 
     /*
@@ -98,7 +98,7 @@ contract VaultOperations is AddressBook {
         IERC20(debtToken).burn(msg.sender, debtAmount);
         IERC20(vaultCollateral).transfer(msg.sender, collateralAmount);
         
-        emit VaultClosed(msg.sender, collateralAmount, debtAmount);
+        emit VaultClosed(msg.sender, vaultCollateral, collateralAmount, debtAmount);
     }
 
     /*
@@ -159,7 +159,7 @@ contract VaultOperations is AddressBook {
         IVaultSorter(vaultSorter).reInsertVault(vaultCollateral, msg.sender, vaultARS, prevId, nextId);
         require(IVaultManager(vaultManager).checkVaultState(vaultCollateral, msg.sender), "Invariant check failed");
 
-        emit VaultAdjusted(msg.sender, addCollateral, withdrawCollateral, addDebt, repaidDebt);
+        emit VaultAdjusted(msg.sender, vaultCollateral, addCollateral, withdrawCollateral, addDebt, repaidDebt);
     }
     
     /*
@@ -280,7 +280,7 @@ contract VaultOperations is AddressBook {
             }
 
             uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
-            emit VaultRedeemed(currentVault, vaultCollateral, redeemableAmount, vaultARS);
+            emit VaultRedeemed(currentVault, vaultCollateral, msg.sender, redeemableAmount, vaultARS);
             
             if (redemptionAmount > 0) {
                 IVaultSorter(vaultSorter).removeVault(vaultCollateral, currentVault);
@@ -323,7 +323,7 @@ contract VaultOperations is AddressBook {
         IVaultSorter(vaultSorter).removeVault(vaultCollateral, msg.sender);
         IVaultSorter(vaultSorter).insertVault(vaultCollateral, recipient, vaultARS, prevId, nextId);
 
-        emit VaultTransfered(vaultCollateral, msg.sender, recipient);
+        emit VaultTransfered(msg.sender, vaultCollateral, recipient);
 
     }
     
