@@ -10,7 +10,7 @@ import "./AddressBook.sol";
 contract PriceFeed is IPriceFeed {
     uint256 public constant TARGET_DIGITS = 18;
     uint256 public constant SPOT_CONVERSION_BASE = 8; // For spot prices: 10^(8-szDecimals)
-    uint256 public constant PERP_CONVERSION_BASE = 6; // For spot prices: 10^(8-szDecimals)
+    uint256 public constant PERP_CONVERSION_BASE = 6; // For spot prices: 10^(6-szDecimals)
     uint256 public constant SYSTEM_TO_WAD = 1e18;    // To convert to 1e18 notation
 
     mapping(address => OracleRecordV2) public oracles;
