@@ -17,7 +17,7 @@ contract VaultOperations is AddressBook {
     uint256 private lastRecordedAccruedDebt;
 
     uint256 constant DECIMAL_PRECISION = 1e18;
-    uint256 constant MINUTES_IN_YEAR = 365 * 24 * 60;
+    uint256 constant SECONDS_IN_YEAR = 31536000; // 365 * 24 * 60 * 60
 
     mapping(address => uint256) public totalDebt; // Total debt of a specific asset vaults 
     mapping(address => uint256) public totalCollateral; // Total collateral of a specific asset vaults
@@ -211,7 +211,7 @@ contract VaultOperations is AddressBook {
             
             // Update total debt and collateral
             totalDebt[vaultCollateral] -= debtAmount;
-            totalCollateral[vaultCollateral] -= spDistribution;
+            totalCollateral[vaultCollateral] -= collateralAmount;
 
             if (remainingCollateral > 0) {
                 IERC20(vaultCollateral).transfer(vaultOwner, remainingCollateral);
@@ -269,7 +269,28 @@ contract VaultOperations is AddressBook {
                 totalDebtRedeemed += redeemableAmount;
                 redemptionAmount -= redeemableAmount;
                 
-                // Adjust vault data
+            }
+
+            // Calculate VaultARS at which the vault was redeemed for analytic purposes.
+            uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
+            emit VaultRedeemed(currentVault, vaultCollateral, msg.sender, redeemableAmount, vaultARS);
+            
+            if (redemptionAmount > 0) {
+                uint256 collForUser = collateralAmount - collateralForRedeemer;
+
+                IVaultManager(vaultManager).adjustVaultData(
+                    vaultCollateral,
+                    currentVault,
+                    0,
+                    0,
+                    0
+                );
+
+                IVaultSorter(vaultSorter).removeVault(vaultCollateral, currentVault);
+                IERC20(vaultCollateral).transfer(currentVault, collForUser);
+
+                currentVault = IVaultSorter(vaultSorter).getLast(vaultCollateral);
+            } else {
                 IVaultManager(vaultManager).adjustVaultData(
                     vaultCollateral,
                     currentVault,
@@ -277,15 +298,8 @@ contract VaultOperations is AddressBook {
                     debtAmount > redeemableAmount ? debtAmount - redeemableAmount : 0,
                     vaultMCR
                 );
-            }
 
-            uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
-            emit VaultRedeemed(currentVault, vaultCollateral, msg.sender, redeemableAmount, vaultARS);
-            
-            if (redemptionAmount > 0) {
-                IVaultSorter(vaultSorter).removeVault(vaultCollateral, currentVault);
-                currentVault = IVaultSorter(vaultSorter).getLast(vaultCollateral);
-            } else {
+                uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
                 IVaultSorter(vaultSorter).reInsertVault(vaultCollateral, currentVault, vaultARS, prevId, nextId);
             }
         }
@@ -433,13 +447,14 @@ contract VaultOperations is AddressBook {
             return 0;
         }
 
-        uint256 minutesElapsed = _timeElapsed / 1 minutes;
-        uint256 baseRate = DECIMAL_PRECISION + (_interestRate / MINUTES_IN_YEAR); // Convert annual interest rate to per-minute rate
-        uint256 compoundFactor = VaultMath.decPow(baseRate, minutesElapsed);
+        // Convert annual interest rate to per-second rate
+        uint256 baseRate = DECIMAL_PRECISION + (_interestRate / SECONDS_IN_YEAR);
+        uint256 compoundFactor = VaultMath.decPow(baseRate, _timeElapsed);
         uint256 newDebt = (_currentDebt * compoundFactor) / DECIMAL_PRECISION;
-
+        
         return newDebt - _currentDebt;
     }
+
 
     /*
     * @notice Calculates the amount of collateral that should be distributed to the stability pool based on the debt and penalties.

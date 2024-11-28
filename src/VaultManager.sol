@@ -222,7 +222,7 @@ contract VaultManager is IVaultManager, AddressBook {
 
     function setMinRange(address collateral, uint256 minRange) public onlyOwner {
         require(isAddressValid(collateral), "Invalid collateral");
-        require(minRange >= 100e16, "Min MCR 100%");
+        require(minRange >= 100e18, "Min MCR 100%");
 
         CollateralParams storage collParams = collateralParams[collateral];
         collParams.minRange = minRange;

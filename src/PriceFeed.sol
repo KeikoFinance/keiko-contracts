@@ -2,7 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "./interfaces/IPriceFeed.sol";
+import "./dependencies/Ownable.sol";
 import "./AddressBook.sol";
+
 
 /**
  * @title Modified Liquity's PriceFeed contract to support Chainlink or Hyperliquid L1 Oracle for a given asset
@@ -21,7 +23,7 @@ contract PriceFeed is IPriceFeed {
         address _chainlinkOracle,
         uint256 _timeoutSeconds,
         bool _isEthIndexed
-    ) external {
+    ) external onlyOwner {
         uint8 decimals = _fetchDecimals(_chainlinkOracle);
         if (decimals == 0) {
             revert PriceFeed__InvalidDecimalsError();
@@ -50,7 +52,7 @@ contract PriceFeed is IPriceFeed {
         address _systemOracle,
         uint256 _priceIndex,
         uint8 _szDecimals
-    ) external {
+    ) external onlyOwner {
         OracleRecordV2 memory newOracle = OracleRecordV2({
             oracleAddress: _systemOracle,
             timeoutSeconds: 3600,   // Fixed timeout for SystemOracle
