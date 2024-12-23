@@ -257,19 +257,16 @@ contract VaultOperations is AddressBook {
             (uint256 collateralAmount, uint256 debtAmount, uint256 vaultMCR) = manageDebtInterest(vaultCollateral, currentVault);
             
             uint256 redeemableAmount = debtAmount < redemptionAmount ? debtAmount : redemptionAmount;
-            
-            unchecked {
-                uint256 feeAmount = (redeemableAmount * redemptionFee) / 1e18;
-                uint256 netRedeemableAmount = redeemableAmount - feeAmount;
-                uint256 collateralForRedeemer = (netRedeemableAmount * 1e18) / collateralPrice;
+            uint256 feeAmount = (redeemableAmount * redemptionFee) / 1e18;
+            uint256 netRedeemableAmount = redeemableAmount - feeAmount;
+            uint256 collateralForRedeemer = (netRedeemableAmount * 1e18) / collateralPrice;
                 
-                require(collateralForRedeemer <= collateralAmount, "Insufficient collateral in the vault");
+            require(collateralForRedeemer <= collateralAmount, "Insufficient collateral in the vault");
                 
-                totalCollateralRedeemed += collateralForRedeemer;
-                totalDebtRedeemed += redeemableAmount;
-                redemptionAmount -= redeemableAmount;
-                
-            }
+            totalCollateralRedeemed += collateralForRedeemer;
+            totalDebtRedeemed += redeemableAmount;
+            redemptionAmount -= redeemableAmount;
+
 
             // Calculate VaultARS at which the vault was redeemed for analytic purposes.
             uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
@@ -299,7 +296,7 @@ contract VaultOperations is AddressBook {
                     vaultMCR
                 );
 
-                uint256 vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
+                vaultARS = IVaultManager(vaultManager).calculateARS(vaultCollateral, currentVault);
                 IVaultSorter(vaultSorter).reInsertVault(vaultCollateral, currentVault, vaultARS, prevId, nextId);
             }
         }
